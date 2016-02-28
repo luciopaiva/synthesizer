@@ -7,7 +7,7 @@ var
 var
     engine = new Engine();
 
-engine.play('c4 c4 g4 g4 g4 g4 f4 e4 f4 e4 d4 d4 d4 d4');
+engine.play('c4.2 g4.2 g4.2 f4 e4 f4 e4 d4.2 d4.2');
 
 /*
 

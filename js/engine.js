@@ -4,12 +4,12 @@ var
     Notes = require('./notes');
 
 var
-    DEFAULT_BPM = 180;
+    DEFAULT_BPM = 300;
 
 
 function Engine() {
     this.bpm = DEFAULT_BPM;
-    this.noteDuration = 60 / this.bpm;  // in seconds
+    this.baseNoteDuration = 60 / this.bpm;  // in seconds
 
     // initialize Web Audio API context
     this.context = new window.AudioContext();
@@ -37,10 +37,22 @@ Engine.prototype.createOscillator = function (frequency) {
 Engine.prototype.parseNote = function (rawNote) {
     var
         self = this,
-        frequency = Notes[rawNote];
+        noteName,
+        noteDuration,
+        frequency;
 
-    if (typeof(frequency) == 'number') {
-        return self.createOscillator(frequency);
+    rawNote = rawNote.split('.');
+    noteName = rawNote[0];
+    noteDuration = rawNote.length > 1 ? parseInt(rawNote[1]) : 1;
+    frequency = Notes[noteName];
+
+    if (typeof(frequency) != 'number') {
+        throw new Error('Invalid note "' + noteName + '"');
+    }
+
+    return {
+        note: self.createOscillator(frequency),
+        duration: noteDuration
     }
 };
 
@@ -63,17 +75,21 @@ Engine.prototype.play = function (score) {
         startTime = this.context.currentTime,
         processedNotes = this.parseScore(score);
 
-    processedNotes.forEach(function (note) {
+    processedNotes.forEach(function (noteInfo) {
         var
-            stopTime = startTime + self.noteDuration * .95,
+            note = noteInfo.note,
+            duration = noteInfo.duration * self.baseNoteDuration,
+            noteClearanceGap = self.baseNoteDuration * .05,
+            rampDuration = self.baseNoteDuration * 0.01,
+            stopTime = startTime + duration - noteClearanceGap,
             gain;
 
         // Clipping is a known problem when switching audio frequencies. We prevent it by ramping up (during attack) and
         // down (during release) the volume of the note:
         gain = self.context.createGain();
         gain.gain.setValueAtTime(0, startTime);
-        gain.gain.linearRampToValueAtTime(1, startTime + self.noteDuration * 0.01);
-        gain.gain.setValueAtTime(1, stopTime - self.noteDuration * 0.01);
+        gain.gain.linearRampToValueAtTime(1, startTime + rampDuration);
+        gain.gain.setValueAtTime(1, stopTime - rampDuration);
         gain.gain.linearRampToValueAtTime(0, stopTime);
         gain.connect(self.masterVolume);
 
@@ -82,7 +98,7 @@ Engine.prototype.play = function (score) {
         note.start(startTime);
         note.stop(stopTime);
 
-        startTime += self.noteDuration;
+        startTime += duration;
     });
 };
 
