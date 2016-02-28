@@ -3,13 +3,20 @@
 var
     Notes = require('./notes');
 
+var
+    DEFAULT_BPM = 180;
+
 
 function Engine() {
+    this.bpm = DEFAULT_BPM;
+    this.noteDuration = 60 / this.bpm;  // in seconds
+
     // initialize Web Audio API context
     this.context = new window.AudioContext();
 
     // create master volume node
     this.masterVolume = this.context.createGain();
+    this.masterVolume.gain.value = 0.4;
     console.info('Master volume gain set at ' + this.masterVolume.gain.value);
 
     // connect master volume node to the speaker
@@ -18,10 +25,12 @@ function Engine() {
 
 Engine.prototype.createOscillator = function (frequency) {
     var
-        osc = this.context.createOscillator();
+        osc;
+
+    osc = this.context.createOscillator();
     osc.type = 'sine';
     osc.frequency.value = frequency;
-    osc.connect(this.masterVolume);
+
     return osc;
 };
 
@@ -50,14 +59,30 @@ Engine.prototype.parseScore = function (rawScore) {
 
 Engine.prototype.play = function (score) {
     var
+        self = this,
         startTime = this.context.currentTime,
-        noteDuration = 0.2,
         processedNotes = this.parseScore(score);
 
     processedNotes.forEach(function (note) {
+        var
+            stopTime = startTime + self.noteDuration * .95,
+            gain;
+
+        // Clipping is a known problem when switching audio frequencies. We prevent it by ramping up (during attack) and
+        // down (during release) the volume of the note:
+        gain = self.context.createGain();
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(1, startTime + self.noteDuration * 0.01);
+        gain.gain.setValueAtTime(1, stopTime - self.noteDuration * 0.01);
+        gain.gain.linearRampToValueAtTime(0, stopTime);
+        gain.connect(self.masterVolume);
+
+        note.connect(gain);
+        //note.connect(self.masterVolume);
         note.start(startTime);
-        note.stop(startTime + noteDuration);
-        startTime += noteDuration;
+        note.stop(stopTime);
+
+        startTime += self.noteDuration;
     });
 };
 
