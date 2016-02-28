@@ -4,7 +4,7 @@ var
     Notes = require('./notes');
 
 var
-    DEFAULT_BPM = 300;
+    DEFAULT_BPM = 400;
 
 
 function Engine() {
@@ -17,7 +17,7 @@ function Engine() {
     // create master volume node
     this.masterVolume = this.context.createGain();
     this.masterVolume.gain.value = 0.4;
-    console.info('Master volume gain set at ' + this.masterVolume.gain.value);
+    //console.info('Master volume gain set at ' + this.masterVolume.gain.value);
 
     // connect master volume node to the speaker
     this.masterVolume.connect(this.context.destination);
@@ -39,19 +39,31 @@ Engine.prototype.parseNote = function (rawNote) {
         self = this,
         noteName,
         noteDuration,
-        frequency;
+        hasNote,
+        hasDuration,
+        frequency = false;
 
-    rawNote = rawNote.split('.');
-    noteName = rawNote[0];
-    noteDuration = rawNote.length > 1 ? parseInt(rawNote[1]) : 1;
-    frequency = Notes[noteName];
-
-    if (typeof(frequency) != 'number') {
-        throw new Error('Invalid note "' + noteName + '"');
+    if (rawNote === '|') {
+        return null;
     }
 
+    rawNote = rawNote.split('.');
+
+    hasNote = rawNote[0].length > 0;
+    if (hasNote) {
+        noteName = rawNote[0];
+        frequency = Notes[noteName];
+        if (typeof(frequency) != 'number') {
+            throw new Error('Invalid note "' + noteName + '"');
+        }
+        frequency = self.createOscillator(frequency);
+    }
+
+    hasDuration = rawNote.length > 1 && !isNaN(parseInt(rawNote[1]));
+    noteDuration = hasDuration ? parseInt(rawNote[1]) : 1;
+
     return {
-        note: self.createOscillator(frequency),
+        note: frequency,
         duration: noteDuration
     }
 };
@@ -63,7 +75,10 @@ Engine.prototype.parseScore = function (rawScore) {
         score = rawScore.toUpperCase().split(/\s+/);
 
     score.forEach(function (note) {
-        result.push(self.parseNote(note));
+        note = self.parseNote(note);
+        if (note) {
+            result.push(note);
+        }
     });
 
     return result;
@@ -84,19 +99,21 @@ Engine.prototype.play = function (score) {
             stopTime = startTime + duration - noteClearanceGap,
             gain;
 
-        // Clipping is a known problem when switching audio frequencies. We prevent it by ramping up (during attack) and
-        // down (during release) the volume of the note:
-        gain = self.context.createGain();
-        gain.gain.setValueAtTime(0, startTime);
-        gain.gain.linearRampToValueAtTime(1, startTime + rampDuration);
-        gain.gain.setValueAtTime(1, stopTime - rampDuration);
-        gain.gain.linearRampToValueAtTime(0, stopTime);
-        gain.connect(self.masterVolume);
+        if (note !== false) {  // if false, this is actually a rest instead of a note
+            // Clipping is a known problem when switching audio frequencies. We prevent it by ramping up (during attack) and
+            // down (during release) the volume of the note:
+            gain = self.context.createGain();
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(1, startTime + rampDuration);
+            gain.gain.setValueAtTime(1, stopTime - rampDuration);
+            gain.gain.linearRampToValueAtTime(0, stopTime);
+            gain.connect(self.masterVolume);
 
-        note.connect(gain);
-        //note.connect(self.masterVolume);
-        note.start(startTime);
-        note.stop(stopTime);
+            note.connect(gain);
+            //note.connect(self.masterVolume);
+            note.start(startTime);
+            note.stop(stopTime);
+        }
 
         startTime += duration;
     });

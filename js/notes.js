@@ -37,7 +37,7 @@ function generateFrequencies() {
             noteName = NOTE_SYMBOLS[semiToneIndex] + octaveIndex;
             noteFrequency = intervalToFrequency(baseNote, semiToneIndex);
             result[noteName] = noteFrequency;
-            console.info(noteName + ': ' + noteFrequency);
+            //console.info(noteName + ': ' + noteFrequency);
         }
     }
 

@@ -29,7 +29,7 @@ And start coding.
 First try at defining a language:
 
     # Mario Bros Theme
-    e5.1  e5.1  . e5.1  | . c5.1  e5.1  . | g5.1 . . .
+    e5.1  e5.1  . e5.1  | . c5.1  e5.1  . | g5.1 . . . | g4
     fs4.1 fs4.1   fs4.1 |   fs4.1 fs4.1   | b4.1
                                             g4.1
 
