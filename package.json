@@ -1,0 +1,17 @@
+{
+  "name": "sound-experiment",
+  "version": "1.0.0",
+  "description": "* be able to define new timbres and save them as instruments * instantiate an instrument * sweep from note A to B * tremolo (change in volume) * vibrato (change in pitch)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "browserify js/index.js -o app.js",
+    "watch": "watchify js/index.js -o app.js --debug --verbose"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "browserify": "^13.0.0",
+    "watchify": "^3.7.0"
+  }
+}
