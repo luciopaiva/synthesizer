@@ -7,7 +7,7 @@ function Engine() {
 
     // create master volume node
     this.masterVolume = this.context.createGain();
-    this.masterVolume.gain.value = 0.4;
+    this.masterVolume.gain.value = 1;
     //console.info('Master volume gain set at ' + this.masterVolume.gain.value);
 
     // connect master volume node to the speaker

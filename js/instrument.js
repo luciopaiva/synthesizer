@@ -2,6 +2,8 @@
 
 function Instrument()  {
     this.notes = [];
+    /** how many notes can be played simultaneously with this instrument - used to avoid clipping */
+    this.maxSimultaneousNotes = 6;
 }
 
 Instrument.prototype.addNote = function (note) {

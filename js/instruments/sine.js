@@ -19,6 +19,7 @@ inherits(SineInstrument, Instrument);
  */
 Instrument.prototype.generateAudioNote = function (engine, note, startTime, stopTime) {
     var
+        gainReduction,
         oscillator;
 
     if (note.isRest()) return;
@@ -30,7 +31,12 @@ Instrument.prototype.generateAudioNote = function (engine, note, startTime, stop
     oscillator.start(startTime);
     oscillator.stop(stopTime);
 
-    return oscillator;
+    gainReduction = engine.getContext().createGain();
+    gainReduction.gain.value = 1 / this.maxSimultaneousNotes;
+    oscillator.connect(gainReduction);
+
+
+    return gainReduction;
 };
 
 module.exports = SineInstrument;
