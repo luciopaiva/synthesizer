@@ -6,9 +6,10 @@ var
 
 function Composition() {
     this.bpm = DEFAULT_BPM;
-    this.baseNoteDuration = 60 / this.bpm;  // in seconds
-
+    this.baseNoteDuration = null;
     this.instruments = [];
+
+    this.recalculateBaseNoteDuration();
 }
 
 /**
@@ -16,6 +17,15 @@ function Composition() {
  */
 Composition.prototype.getBPM = function () {
     return this.bpm;
+};
+
+Composition.prototype.setBPM = function (bpm) {
+    this.bpm = bpm;
+    this.recalculateBaseNoteDuration();
+};
+
+Composition.prototype.recalculateBaseNoteDuration = function () {
+    this.baseNoteDuration = 60 / this.bpm;  // in seconds
 };
 
 /**

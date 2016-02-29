@@ -15,7 +15,7 @@ var
 function ScoreReader() {
 }
 
-ScoreReader.prototype.parseNote = function (rawNote) {
+ScoreReader.prototype.parseNote = function (rawNote, startTime, baseDuration) {
     var
         noteName,
         noteDuration,
@@ -41,7 +41,7 @@ ScoreReader.prototype.parseNote = function (rawNote) {
     hasDuration = rawNote.length > 1 && !isNaN(parseInt(rawNote[1]));
     noteDuration = hasDuration ? parseInt(rawNote[1]) : 1;
 
-    return new Note(noteName, frequency, noteDuration);
+    return new Note(noteName, frequency, startTime, noteDuration * baseDuration);
 };
 
 ScoreReader.prototype.parse = function (rawScore) {

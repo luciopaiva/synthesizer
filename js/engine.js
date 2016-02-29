@@ -54,7 +54,7 @@ Engine.prototype.play = function (composition) {
         baseDuration = composition.getBaseNoteDuration(),
         noteClearanceGap = baseDuration * .05,
         rampDuration = baseDuration * 0.01,
-        startTime = this.context.currentTime;
+        baseStartTime = this.context.currentTime;
 
     composition.forEachInstrument(iterateInstrument);
 
@@ -64,9 +64,14 @@ Engine.prototype.play = function (composition) {
      */
     function iterateNote(instrument, note) {
         var
-            durationInSeconds = note.getDuration() * baseDuration,
-            stopTime = startTime + durationInSeconds - noteClearanceGap,
+            durationInSeconds,
+            startTime,
+            stopTime,
             node;
+
+        durationInSeconds = note.getDuration();
+        startTime = baseStartTime + note.getStartTime();
+        stopTime = startTime + durationInSeconds - noteClearanceGap;
 
         if (!note.isRest()) {
             node = instrument.generateAudioNote(self, note, startTime, stopTime);
@@ -74,8 +79,6 @@ Engine.prototype.play = function (composition) {
             node = self.getAntiClippingEnvelope(node, startTime, stopTime, rampDuration);
             node.connect(self.masterVolume);
         }
-
-        startTime += durationInSeconds;
     }
 
     /**
