@@ -1,16 +1,7 @@
 "use strict";
 
-var
-    Notes = require('./notes');
-
-var
-    DEFAULT_BPM = 400;
-
 
 function Engine() {
-    this.bpm = DEFAULT_BPM;
-    this.baseNoteDuration = 60 / this.bpm;  // in seconds
-
     // initialize Web Audio API context
     this.context = new window.AudioContext();
 
@@ -23,100 +14,76 @@ function Engine() {
     this.masterVolume.connect(this.context.destination);
 }
 
-Engine.prototype.createOscillator = function (frequency) {
-    var
-        osc;
-
-    osc = this.context.createOscillator();
-    osc.type = 'sine';
-    osc.frequency.value = frequency;
-
-    return osc;
+Engine.prototype.getContext = function () {
+    return this.context;
 };
 
-Engine.prototype.parseNote = function (rawNote) {
+/**
+ * Clipping is a known problem when switching audio frequencies or when abruptly coming in or out of a silence. We
+ * prevent it by ramping up (during attack) and down (during release) the volume of the note.
+ *
+ * @param {AudioNode} node an instance of an AudioNode to be enveloped
+ * @param startTime
+ * @param stopTime
+ * @param rampDuration
+ */
+Engine.prototype.getAntiClippingEnvelope = function (node, startTime, stopTime, rampDuration) {
     var
-        self = this,
-        noteName,
-        noteDuration,
-        hasNote,
-        hasDuration,
-        frequency = false;
+        envelope;
 
-    if (rawNote === '|') {
-        return null;
-    }
+    envelope = this.context.createGain();
+    envelope.gain.setValueAtTime(0, startTime);
+    envelope.gain.linearRampToValueAtTime(1, startTime + rampDuration);
+    envelope.gain.setValueAtTime(1, stopTime - rampDuration);
+    envelope.gain.linearRampToValueAtTime(0, stopTime);
 
-    rawNote = rawNote.split('.');
+    node.connect(envelope);
+    envelope.connect(this.masterVolume);
 
-    hasNote = rawNote[0].length > 0;
-    if (hasNote) {
-        noteName = rawNote[0];
-        frequency = Notes[noteName];
-        if (typeof(frequency) != 'number') {
-            throw new Error('Invalid note "' + noteName + '"');
-        }
-        frequency = self.createOscillator(frequency);
-    }
-
-    hasDuration = rawNote.length > 1 && !isNaN(parseInt(rawNote[1]));
-    noteDuration = hasDuration ? parseInt(rawNote[1]) : 1;
-
-    return {
-        note: frequency,
-        duration: noteDuration
-    }
+    return envelope;
 };
 
-Engine.prototype.parseScore = function (rawScore) {
-    var
-        result = [],
-        self = this,
-        score = rawScore.toUpperCase().split(/\s+/);
-
-    score.forEach(function (note) {
-        note = self.parseNote(note);
-        if (note) {
-            result.push(note);
-        }
-    });
-
-    return result;
-};
-
-Engine.prototype.play = function (score) {
+/**
+ * Plays a composition object.
+ *
+ * @param {Composition} composition
+ */
+Engine.prototype.play = function (composition) {
     var
         self = this,
-        startTime = this.context.currentTime,
-        processedNotes = this.parseScore(score);
+        baseDuration = composition.getBaseNoteDuration(),
+        noteClearanceGap = baseDuration * .05,
+        rampDuration = baseDuration * 0.01,
+        startTime = this.context.currentTime;
 
-    processedNotes.forEach(function (noteInfo) {
+    composition.forEachInstrument(iterateInstrument);
+
+    /**
+     * @param {Instrument} instrument
+     * @param {Note} note
+     */
+    function iterateNote(instrument, note) {
         var
-            note = noteInfo.note,
-            duration = noteInfo.duration * self.baseNoteDuration,
-            noteClearanceGap = self.baseNoteDuration * .05,
-            rampDuration = self.baseNoteDuration * 0.01,
-            stopTime = startTime + duration - noteClearanceGap,
-            gain;
+            durationInSeconds = note.getDuration() * baseDuration,
+            stopTime = startTime + durationInSeconds - noteClearanceGap,
+            node;
 
-        if (note !== false) {  // if false, this is actually a rest instead of a note
-            // Clipping is a known problem when switching audio frequencies. We prevent it by ramping up (during attack) and
-            // down (during release) the volume of the note:
-            gain = self.context.createGain();
-            gain.gain.setValueAtTime(0, startTime);
-            gain.gain.linearRampToValueAtTime(1, startTime + rampDuration);
-            gain.gain.setValueAtTime(1, stopTime - rampDuration);
-            gain.gain.linearRampToValueAtTime(0, stopTime);
-            gain.connect(self.masterVolume);
-
-            note.connect(gain);
-            //note.connect(self.masterVolume);
-            note.start(startTime);
-            note.stop(stopTime);
+        if (!note.isRest()) {
+            node = instrument.generateAudioNote(self, note, startTime, stopTime);
+            // this step is optional, but avoid clipping due to abrupt silences
+            node = self.getAntiClippingEnvelope(node, startTime, stopTime, rampDuration);
+            node.connect(self.masterVolume);
         }
 
-        startTime += duration;
-    });
+        startTime += durationInSeconds;
+    }
+
+    /**
+     * @param {Instrument} instrument
+     */
+    function iterateInstrument(instrument) {
+        instrument.forEachNote(iterateNote.bind(self, instrument));
+    }
 };
 
 module.exports = Engine;

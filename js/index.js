@@ -1,12 +1,22 @@
 "use strict";
 
 var
+    d3 = require('d3');
+
+var
+    ScoreReader = require('./score-reader'),
     Engine = require('./engine');
 
 var
     engine = new Engine();
 
-engine.play('e5  e5  . e5 | . c5  e5  . | g5 .3 | g4');
+
+d3.text('scores/mario.scr', function (err, data) {
+    var
+        composition = ScoreReader.parse(data);
+
+    engine.play(composition);
+});
 
 /*
 
