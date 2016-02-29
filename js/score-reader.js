@@ -8,13 +8,14 @@
 "use strict";
 
 var
-    Composition = require('./composition'),
-    SineInstrument = require('./instruments/sine'),
     Notes = require('./notes'),
     Note = require('./note');
 
 
-function parseNote(rawNote) {
+function ScoreReader() {
+}
+
+ScoreReader.prototype.parseNote = function (rawNote) {
     var
         noteName,
         noteDuration,
@@ -41,27 +42,10 @@ function parseNote(rawNote) {
     noteDuration = hasDuration ? parseInt(rawNote[1]) : 1;
 
     return new Note(noteName, frequency, noteDuration);
-}
-
-function parseScore(rawScore) {
-    var
-        composition,
-        instrument;
-
-    instrument = new SineInstrument();
-
-    rawScore = rawScore.toUpperCase().split(/\s+/);
-    rawScore.forEach(function (rawNote) {
-        var
-            note = parseNote(rawNote);
-        instrument.addNote(note);
-    });
-
-    composition = new Composition();
-    composition.addInstrument(instrument);
-    return composition;
-}
-
-module.exports = {
-    parse: parseScore
 };
+
+ScoreReader.prototype.parse = function (rawScore) {
+    throw new Error('Must implement me in a subclass!');
+};
+
+module.exports = ScoreReader;

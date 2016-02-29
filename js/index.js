@@ -4,7 +4,7 @@ var
     d3 = require('d3');
 
 var
-    ScoreReader = require('./score-reader'),
+    HorizontalReader = require('./score-readers/horizontal'),
     Engine = require('./engine');
 
 var
@@ -13,8 +13,11 @@ var
 
 d3.text('scores/mario.scr', function (err, data) {
     var
-        composition = ScoreReader.parse(data);
+        reader,
+        composition;
 
+    reader = new HorizontalReader();
+    composition = reader.parse(data);
     engine.play(composition);
 });
 
